@@ -71,6 +71,9 @@ The dataset was preprocessed by:
 ## Results
 The results and insights from the analysis will be summarized in the final RMarkdown report, which includes visualizations and interpretations.
 
+## Additional Scripts
+- `download_data.R`: Downloads the dataset from Kaggle using their API. This is optional and can be used to automate data fetching.
+
 ## Acknowledgments
 Special thanks to the contributors of the dataset on Kaggle:
 [Sleep Health and Lifestyle Dataset](https://www.kaggle.com/datasets/uom190346a/sleep-health-and-lifestyle-dataset).
