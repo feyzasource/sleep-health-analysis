@@ -1,0 +1,32 @@
+---
+title: "Scatter Plot Example"
+output: html_document
+date: "2024-12-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Relationship Between Age and Sleep Duration
+
+This scatter plot visualizes the relationship between **Age** and **Sleep Duration** using the ggplot2 package.
+
+```{r scatter-plot, echo=TRUE}
+library(ggplot2)
+
+# Load the dataset
+data <- read.csv("Sleep_health_and_lifestyle_dataset.csv")
+
+# Create the scatter plot
+ggplot(data, aes(x = Age, y = Sleep.Duration)) +
+  geom_point() +
+  labs(title = "Relationship Between Age and Sleep Duration",
+       x = "Age",
+       y = "Sleep Duration (hours)")
+```
+
+---
+
+### Explanation:
+- This plot shows the relationship between **Age** and **Sleep Duration**. Each point represents an individual from the dataset.
