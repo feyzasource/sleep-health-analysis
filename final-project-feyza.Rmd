@@ -1,0 +1,1664 @@
+---
+title: "Sleep Health Analysis"
+author: "Feyza E. Kılıç"
+date: "2025-01-09"
+output:
+  html_document:
+    css: styles.css
+---
+
+## 1. Load Dataset & Data Description 
+
+This project explores and analyzes the Sleep Health and Lifestyle Dataset, sourced from Kaggle. The dataset contains information about individuals' sleep habits, health metrics, and lifestyle factors. The primary goal is to identify patterns and relationships between sleep quality, physical activity, stress levels, and other variables.
+
+**Dataset Description**
+
+-**Person ID**: An identifier for each individual.  
+-**Gender**: The gender of the person (Male/Female).  
+-**Age**: The age of the person in years.  
+-**Occupation**: The occupation or profession of the person.  
+-**Sleep Duration (hours)**: The number of hours the person sleeps per day.  
+-**Quality of Sleep (scale: 1-10)**: A subjective rating of the quality of sleep, ranging from 1 to 10.  
+-**Physical Activity Level (minutes/day)**: The number of minutes the person engages in physical activity daily.  
+-**Stress Level (scale: 1-10)**: A subjective rating of the stress level experienced by the person, ranging from 1 to 10.  
+-**BMI Category**: The BMI category of the person (e.g., Normal Weight, Overweight, Obese).  
+-**Blood Pressure (systolic/diastolic)**: The blood pressure measurement of the person, indicated as systolic pressure over diastolic pressure.  
+-**Heart Rate (bpm)**: The resting heart rate of the person in beats per minute.  
+-**Daily Steps**: The number of steps the person takes per day.  
+-**Sleep Disorder**: The presence or absence of a sleep disorder in the person (None, Insomnia, Sleep Apnea).  
+
+-**Code**:
+```{r, echo=FALSE, results="asis"}
+# Load dataset directly from a local CSV file
+file_path <- "Sleep_health_and_lifestyle_dataset.csv"
+data <- read.csv("C:/store/git/sleep-health-analysis/Sleep_health_and_lifestyle_dataset.csv")
+
+
+# Check dimensions and structure of the dataset
+dim(data)
+
+#Load necessary libraries
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(knitr)
+
+})
+
+#Extract column names and their types
+column_info <-data.frame(
+    #Column names from the data frame
+  Type = sapply(data,class)
+  )
+
+column_info %>%
+  kable(
+    col.names = c("Column Name", "Type"),  # Set column names for the table
+    caption = "Data Frame Column Types"   # Add a caption for the table
+  )
+
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The dataset contains 374 observations and 13 variables. The variables are a mix of integer, character, and numeric types. Further analysis will focus on relationships between sleep-related variables and lifestyle factors.
+</div>
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> Column Type Conversions: In the original dataset sourced from Kaggle, the Gender, BMI.Category, and Sleep.Disorder columns are not in a correct format when imported into R. During the Exploratory Data Analysis (EDA) phase, these columns will be converted into categorical variables to enhance their usability for analysis and visualization.
+
+Missing Values: At this stage, there are no missing values in the dataset. However, in the subsequent steps, missing values will be introduced randomly for data manipulation purposes. This will allow for the application of missing value analysis and imputation techniques.
+</div>
+## 2. Exploratory Data Analysis (EDA)
+
+```{r, echo=FALSE, results="asis"}
+# Load required libraries
+
+suppressWarnings(suppressPackageStartupMessages(library(knitr)))
+suppressWarnings(suppressPackageStartupMessages(library(kableExtra)))
+
+# Display the first 10 rows of the dataset
+knitr::kable(head(data, 10), caption = "First 10 Rows of the Dataset") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# Eksik veri sayısını hesapla
+missing_values <- colSums(is.na(data))
+
+# Eksik veri tablosunu oluştur
+missing_df <- data.frame(
+  Sütun = names(missing_values),
+  Eksik_Sayı = missing_values
+)
+
+# Tabloyu şık bir şekilde yazdır
+library(knitr)
+library(kableExtra)
+
+kable(
+  missing_df,
+  caption = "Missing Data Summary Table",
+  col.names = c("Column Name", "Missing Value Count"),
+  align = "c"
+) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE
+  )
+
+
+
+
+#Kategorik Verilerin Analizi
+data$Gender <- as.factor(data$Gender)  
+
+# 'Sleep.Disorder' sütununu faktör veri tipine dönüştürme
+data$Sleep.Disorder <- as.factor(data$Sleep.Disorder)
+data$Sleep.Disorder <- factor(data$Sleep.Disorder, levels = c("None", "Insomnia", "Sleep Apnea"))
+
+suppressWarnings(suppressMessages({
+library(ggplot2)}))
+# Sleep Duration
+ggplot(data, aes(x = Sleep.Duration)) +
+  geom_density(fill = "green", alpha = 0.4) +
+  labs(title = "Density Plot of Sleep Duration", x = "Sleep Duration", y = "Density")
+
+
+# Visualize categorical variables with a bar plot
+barplot(
+  table(data$Gender), 
+  main = "Gender Distribution", 
+  col = "skyblue"
+)
+# Sleep Disorder by Gender
+ggplot(data, aes(x = Sleep.Disorder, fill = Gender)) +
+  geom_bar(position = "dodge") +
+  facet_wrap(~Gender) +
+  labs(
+    title = "Sleep Disorder Distribution by Gender",
+    x = "Sleep Disorder",
+    y = "Count"
+  ) +
+  theme_minimal()
+
+
+suppressPackageStartupMessages({
+library(dplyr)
+})
+
+data <- data %>%
+    mutate(BMI.Category = case_when(
+        BMI.Category == "Normal" ~ "Normal Weight",
+        TRUE ~ as.character(BMI.Category)  # Diğer tüm değerleri olduğu gibi bırak
+    ))
+
+# Faktör olarak ayarlayın
+data$BMI.Category <- factor(data$BMI.Category, levels = c("Overweight", "Normal Weight", "Obese"))
+
+# Gerekli kütüphaneleri yükleyin
+suppressWarnings(suppressPackageStartupMessages({
+  library(knitr)
+  
+}))
+
+suppressWarnings(suppressPackageStartupMessages({
+  library(kableExtra)
+  
+}))
+
+
+# Sayısal sütunları seçin ve özet istatistiklerini hesaplayın
+numerical_summary <- data.frame(
+  Variable = colnames(data),
+  Min = sapply(data, function(x) if (is.numeric(x)) min(x, na.rm = TRUE) else NA),
+  `1st Qu.` = sapply(data, function(x) if (is.numeric(x)) quantile(x, 0.25, na.rm = TRUE) else NA),
+  Median = sapply(data, function(x) if (is.numeric(x)) median(x, na.rm = TRUE) else NA),
+  Mean = sapply(data, function(x) if (is.numeric(x)) mean(x, na.rm = TRUE) else NA),
+  `3rd Qu.` = sapply(data, function(x) if (is.numeric(x)) quantile(x, 0.75, na.rm = TRUE) else NA),
+  Max = sapply(data, function(x) if (is.numeric(x)) max(x, na.rm = TRUE) else NA)
+)
+
+# Tabloyu görselleştirme
+kable(numerical_summary, caption = "Summary Statistics for Numerical Columns") %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE
+  )
+
+
+#Sayısal Verilerin Analizi
+
+# Kütüphaneleri yükle
+suppressWarnings(suppressPackageStartupMessages(library(knitr)))
+suppressWarnings(suppressPackageStartupMessages(library(kableExtra)))
+
+# Meslek frekans tablosu
+occupation_table <- as.data.frame(table(data$Occupation))
+colnames(occupation_table) <- c("Occupation", "Frequency")
+
+# Yüzdeleri ekle
+occupation_table$Percentage <- prop.table(table(data$Occupation)) * 100
+
+# Tabloyu göster
+kable(occupation_table, format = "html", caption = "Occupation Frequency and Percentage") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+
+
+# Sistolik basıncı (ilk kısmı) alın ve numeric'e dönüştürün
+data$SystolicBP <- as.numeric(sub("/.*", "", data$Blood.Pressure))
+
+
+# Gerekli kütüphaneleri yükleme
+suppressWarnings(suppressPackageStartupMessages({
+  library(ggplot2)
+  library(ggridges)
+}))
+
+# Ridgeline grafik oluşturma
+ggplot(data, aes(x = Sleep.Duration, y = Occupation, fill = ..x..)) +
+  geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01) +
+  scale_fill_viridis_c(name = "Sleep Duration", option = "C") +
+  labs(
+    title = "Sleep Duration Across Occupations",
+    x = "Sleep Duration (Hours)",
+    y = "Occupation"
+  ) +
+  theme_minimal()
+
+
+# Bubble Chart için frekans tablosu oluştur
+bubble_data <- as.data.frame(table(data$Gender, data$BMI.Category))
+colnames(bubble_data) <- c("Gender", "BMI.Category", "Frequency")
+
+# Bubble Chart oluşturma
+suppressWarnings(suppressMessages({
+  library(ggplot2)
+}))
+
+ggplot(bubble_data, aes(x = Gender, y = BMI.Category, size = Frequency, fill = Frequency)) +
+  geom_point(shape = 21, color = "black", alpha = 0.7) +
+  scale_size_area(max_size = 15) +  # Bubble boyutlarını ayarlama
+  labs(
+    title = "Relationship Between Gender and BMI Category",
+    x = "Gender",
+    y = "BMI Category",
+    size = "Frequency"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+suppressWarnings(suppressMessages({
+  library(ggplot2)
+}))
+
+# Violin plot for Age
+ggplot(data, aes(x = "", y = Age)) +
+  geom_violin(fill = "lightblue", color = "black", alpha = 0.6) +
+  geom_jitter(width = 0.2, size = 1, alpha = 0.6, color = "darkblue") +
+  labs(
+    title = "Age Distribution",
+    x = "",
+    y = "Age"
+  ) +
+  theme_minimal()
+
+
+# Beeswarm plot for Heart Rate
+ggplot(data, aes(x = "", y = Heart.Rate)) +
+  geom_jitter(width = 0.2, size = 2, color = "red", alpha = 0.6) +
+  labs(
+    title = "Heart Rate Plot",
+    x = "",
+    y = "Heart Rate (bpm)"
+  ) +
+  theme_minimal()
+
+# Beeswarm plot for Daily Steps
+ggplot(data, aes(x = "", y = Daily.Steps)) +
+  geom_jitter(width = 0.2, size = 2, color = "green", alpha = 0.6) +
+  labs(
+    title = "Daily Steps Plot",
+    x = "",
+    y = "Daily Steps"
+  ) +
+  theme_minimal()
+
+```
+
+## 3. Visualization Techniques
+
+```{r, echo=FALSE}
+# Load required libraries
+
+suppressWarnings(suppressMessages({
+library(ggplot2)}))
+
+
+# Histogram of Sleep Duration
+ggplot(data, aes(x = Sleep.Duration)) +
+  geom_histogram(binwidth = 1, aes(fill = ..count..), color = "black") +
+  scale_fill_gradient(low = "skyblue", high = "blue") +
+  labs(
+    title = "Distribution of Sleep Duration",
+    x = "Sleep Duration (Hours)",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The histogram illustrates the distribution of sleep duration among individuals. Most participants have a sleep duration clustered around 6-8 hours, indicating a standard sleeping pattern. Outliers with very low or high sleep durations are visible but relatively rare.
+</div>
+
+```{r, echo=FALSE}
+# Bar plot for Gender Distribution
+ggplot(data, aes(x = Gender, fill = Gender)) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = ..count..), vjust = -0.5) +
+  scale_fill_manual(values = c("pink", "lightblue")) +
+  labs(
+    title = "Gender Distribution",
+    x = "Gender",
+    y = "Count"
+  ) +
+  theme_minimal()
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b>The bar plot shows the gender distribution in the dataset. The count of male and female participants is relatively balanced, ensuring fair representation across gender groups for analysis. Labels above the bars provide precise counts for each category.
+</div>
+
+```{r, echo=FALSE}
+# Analyze relationships between variables
+
+ggplot(data, aes(x = Sleep.Duration, y = Quality.of.Sleep)) +
+  geom_point(aes(color = Quality.of.Sleep), alpha = 0.6, size = 3) +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  scale_color_gradient(low = "yellow", high = "red") +
+  labs(
+    title = "Relationship Between Sleep Duration and Quality of Sleep",
+    x = "Sleep Duration",
+    y = "Quality of Sleep"
+  ) +
+  theme_minimal()
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b>This scatter plot highlights a positive relationship between sleep duration and quality of sleep. Longer sleep durations are associated with higher sleep quality. The linear trendline emphasizes the strength of this relationship, while the color gradient adds insights into varying quality levels.
+</div>
+
+```{r, echo=FALSE, results="asis"}
+# Visualize Occupation vs Sleep Duration
+ggplot(data, aes(x = Occupation, y = Sleep.Duration, fill = Occupation)) +
+  geom_boxplot(outlier.color = "red", outlier.shape = 16, alpha = 0.7) +
+  geom_jitter(color = "black", alpha = 0.3, size = 1) +
+  labs(
+    title = "Sleep Duration by Occupation",
+    x = "Occupation",
+    y = "Sleep Duration (Hours)"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The boxplot and jitter plot reveal variations in sleep duration across occupations, with noticeable outliers and broader ranges in certain professions.
+</div>
+
+```{r, echo=FALSE, results="asis"}
+# Visualize Daily Steps vs Heart Rate
+ggplot(data, aes(x = Daily.Steps, y = Heart.Rate, size = Physical.Activity.Level, color = Gender)) +
+  geom_point(alpha = 0.6) +
+  scale_color_manual(values = c("Male" = "blue", "Female" = "pink")) +
+  labs(
+    title = "Daily Steps vs Heart Rate by Gender",
+    x = "Daily Steps",
+    y = "Heart Rate (bpm)",
+    size = "Physical Activity Level"
+  ) +
+  theme_minimal()
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The bubble plot showcases the relationship between daily steps, heart rate, and gender. Larger bubbles indicate higher physical activity levels.
+</div>
+
+```{r, echo=FALSE, results="asis"}
+# Visualize Physical Activity Level vs BMI Category
+ggplot(data, aes(x = BMI.Category, y = Physical.Activity.Level)) +
+  geom_boxplot(fill = "lightpink", color = "black") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Physical Activity Level vs BMI Category",
+    x = "BMI Category",
+    y = "Physical Activity Level"
+  )
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> This boxplot highlights that individuals with a Normal Weight BMI category tend to have higher physical activity levels compared to Overweight or Obese groups.
+</div>
+
+
+
+```{r, echo=FALSE, results="asis"}
+
+suppressWarnings(suppressMessages({
+library(ggplot2)
+}))
+
+# Average Systolic Blood Pressure by BMI Category
+avg_bp <- aggregate(SystolicBP ~ BMI.Category, data = data, FUN = mean, na.rm = TRUE)
+ggplot(avg_bp, aes(x = BMI.Category, y = SystolicBP, fill = BMI.Category)) +
+  geom_bar(stat = "identity", color = "black") +
+  labs(
+    title = "Average Systolic Blood Pressure by BMI Category",
+    x = "BMI Category",
+    y = "Average Systolic Blood Pressure"
+  ) +
+  theme_minimal()
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The bar chart demonstrates that systolic blood pressure increases with BMI, suggesting a potential link between BMI and cardiovascular health risks.
+</div>
+
+
+```{r, echo=FALSE, results="asis"}
+
+suppressWarnings(suppressMessages({
+library(ggplot2)
+}))
+
+
+suppressWarnings(suppressMessages({
+library(ggmosaic)}))
+# Mosaic plot
+ggplot(data) +
+  geom_mosaic(aes(x = product(Occupation), fill = Sleep.Disorder), color = "white") +
+  geom_text(aes(label = ..count..), stat = "mosaic", position = position_dodge(width = 0.9), size = 3) +
+  labs(
+    title = "Relationship Between Sleep Disorder and Occupation",
+    x = "Occupation",
+    y = "Proportion"
+  ) +
+  theme_minimal()
+
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The mosaic plot reveals the proportional distribution of sleep disorders across occupations, with certain roles exhibiting higher frequencies of disorders.
+</div>
+
+```{r, echo=FALSE, results="asis"}
+# Violin plot
+ggplot(data, aes(x = Gender, y = Stress.Level, fill = Gender)) +
+  geom_violin(trim = FALSE, alpha = 0.7) +
+  geom_jitter(width = 0.2, size = 1, alpha = 0.5, color = "black") +
+  scale_fill_manual(values = c("Female" = "pink", "Male" = "lightblue")) +
+  labs(
+    title = "Gender vs Stress Level",
+    x = "Gender",
+    y = "Stress Level"
+  ) +
+  theme_minimal()
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The violin plot illustrates gender differences in stress levels. Females show higher variability and slightly higher median stress levels compared to males.
+</div>
+
+```{r, echo=FALSE, results="asis"}
+ggplot(data, aes(x = Sleep.Duration, y = Stress.Level)) +
+  geom_point(alpha = 0.6) +
+  facet_wrap(~Gender) +
+  labs(
+    title = "Stress Level vs Sleep Duration by Gender",
+    x = "Sleep Duration",
+    y = "Stress Level"
+  ) +
+  theme_minimal()
+
+
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;"> <b>Comment:</b> The visualization shows the relationship between Sleep Duration and Stress Level, separated by gender. This allows for a comparison of trends within each gender group, highlighting any gender-based differences in how stress levels vary with sleep duration. </div>
+
+
+```{r, echo=FALSE, results="asis"}
+# Load GGally for pair plot
+suppressWarnings(suppressMessages({
+library(GGally)
+}))
+
+# Enhanced Pairwise Relationships
+ggpairs(
+  data,
+  columns = c("Daily.Steps", "Heart.Rate", "Stress.Level", "SystolicBP"),
+  mapping = aes(color = Gender, alpha = 0.7),
+  title = "Enhanced Pairwise Relationships by Gender",
+  diag = list(continuous = wrap("densityDiag", alpha = 0.5)),
+  lower = list(
+    continuous = wrap("smooth", method = "lm", se = FALSE, color = "darkblue"),
+    combo = wrap("facethist", alpha = 0.7)
+  )
+)
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;"> <b>Comment:</b> The enhanced pairwise plot includes density plots along the diagonal and scatter plots with linear trends in the lower triangle, providing a clear view of relationships between variables. It also highlights gender-based differences with color coding. </div>
+
+```{r, echo=FALSE, results="asis"}
+# Beeswarm plot
+
+suppressWarnings(suppressMessages({
+library(ggbeeswarm)
+}))
+
+ggplot(data, aes(x = Occupation, y = Stress.Level, color = Occupation)) +
+  geom_beeswarm(size = 2, alpha = 0.7) +
+  labs(
+    title = "Stress Level Across Occupations",
+    x = "Occupation",
+    y = "Stress Level"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The beeswarm plot provides a detailed view of stress level distribution across occupations, emphasizing outliers and variability within each profession.
+</div>
+
+## 4. Check for Multicollinearity
+
+
+
+
+```{r, echo=FALSE, results="asis"}
+
+# Person.ID sütununu çıkararak korelasyon matrisi oluşturma
+numeric_columns <- sapply(data, is.numeric) & names(data) != "Person.ID"
+cor_matrix <- cor(data[, numeric_columns])
+
+# Korelasyon matrisini görselleştirme
+suppressWarnings(suppressMessages({
+library(ggcorrplot)
+}))
+
+
+ggcorrplot(cor_matrix, lab = TRUE)
+
+suppressWarnings(suppressMessages({
+library(car)}))
+
+
+
+model <- lm(Quality.of.Sleep ~ Sleep.Duration + Stress.Level, data = data)
+vif(model)
+
+# PCA için gerekli kütüphane
+suppressWarnings(suppressMessages({
+library(ggfortify)  # Görselleştirme için}))
+
+}))
+
+
+                       
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> 
+
+1. **High Positive Correlation**:
+   - **Quality of Sleep and Sleep Duration**: These two variables have a high positive correlation of **0.88**, indicating that individuals who sleep longer tend to report better sleep quality.
+   - **Daily Steps and Physical Activity Level**: These variables are strongly positively correlated (**0.77**), which aligns with expectations since daily steps contribute significantly to physical activity levels.
+
+2. **High Negative Correlation**:
+   - **Quality of Sleep and Stress Level**: These variables exhibit a strong negative correlation of **-0.90**, suggesting that higher stress levels are associated with lower sleep quality.
+   - **Stress Level and Sleep Duration**: A negative correlation of **-0.81** implies that increased stress levels are linked to shorter sleep durations.
+
+3. **Low or Insignificant Correlations**:
+   - Variables like **Heart Rate** and **Daily Steps** have weak correlations with other variables, indicating minimal linear relationships in this context.
+
+4. **Potential Multicollinearity**:
+   - The high correlation values, especially between **Sleep Duration**, **Quality of Sleep**, and **Stress Level**, suggest potential multicollinearity issues. This can negatively impact regression models by inflating variance and making coefficients unreliable.
+   - To address multicollinearity, dimensionality reduction techniques such as Principal Component Analysis (PCA) can be applied, particularly for variables like **Quality of Sleep**, **Stress Level**, and **Sleep Duration**, which are strongly interrelated.
+
+
+</div>
+
+## 5. Apply PCA
+
+```{r, echo=FALSE}
+
+# Sadece sayısal sütunları seçme
+numeric_columns <- sapply(data, is.numeric)
+pca_data <- data[, numeric_columns]
+
+# PCA uygulama
+pca_result <- prcomp(pca_data, scale. = TRUE)
+# Bileşen yüklemeleri (component loadings)
+pca_result$rotation
+# PCA özet sonuçları
+summary(pca_result)
+
+
+
+# Varyansın açıklanma yüzdesini görselleştirme
+# PCA açıklanan varyansı görselleştirme
+explained_var <- summary(pca_result)$importance[2, ] * 100  # Yüzdelik açıklanan varyans
+explained_var_df <- data.frame(
+  Principal_Component = seq_along(explained_var),
+  Explained_Variance = explained_var
+)
+suppressPackageStartupMessages({
+
+library(ggplot2)
+})
+
+ggplot(explained_var_df, aes(x = Principal_Component, y = Explained_Variance)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  labs(
+    title = "Explained Variance by Principal Components",
+    x = "Principal Components",
+    y = "Explained Variance (%)"
+  ) +
+  theme_minimal()
+
+
+# PCA bileşenlerini görselleştirme
+suppressPackageStartupMessages({
+
+library(ggfortify)
+})
+
+autoplot(pca_result, data = data, colour = 'Quality.of.Sleep')
+
+
+
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> In question 4, the multicollinearity analysis identified potential problems that could arise due to high correlations between variables. For instance, there is a strong positive relationship between Sleep.Duration and Quality.of.Sleep with r = 0.88.
+
+PCA is an effective method to address this issue. Highly correlated variables are summarized under a single component, ensuring independence within the model. PC1 effectively captures the shared variance among these variables.
+
+As a result of this process, multicollinearity in the dataset has been eliminated, and the total variance of the variables has been represented using fewer components. These benefits of PCA enhance model performance, allowing for more robust and reliable analyses.
+</div>
+
+## 6. Apply Logistic Regression or Regression
+
+#Logistic regression
+
+- **Logistic Regression Formula**:
+  
+  \[
+  \log \left(\frac{p}{1-p}\right) = \beta_0 + \beta_1 \cdot \text{Sleep.Duration} + \beta_2 \cdot \text{Physical.Activity.Level} + \beta_3 \cdot \text{Stress.Level}
+  \]
+
+
+```{r, echo=FALSE}
+
+# Logistic Regression modeli oluşturma
+logistic_model <- glm(BMI.Category ~ Sleep.Duration + Physical.Activity.Level + Stress.Level, 
+                      data = data, family = binomial)
+
+# Modelin özetini görüntüleme
+summary(logistic_model)
+
+# Tahmin edilen olasılıkları hesaplama
+data$predicted_prob <- predict(logistic_model, type = "response")
+
+# Sınıfları tahmin etme (0.5 eşik değeri kullanarak)
+data$predicted_class <- ifelse(data$predicted_prob > 0.5, "Obese", "Normal Weight")
+
+# Tahmin edilen sınıfları faktör olarak ayarlama ve seviyeleri orijinal değişkenle uyumlu hale getirme
+data$predicted_class <- factor(data$predicted_class, levels = levels(data$BMI.Category))
+
+# Confusion matrix
+suppressWarnings(suppressPackageStartupMessages(library(caret)))
+
+
+confusion_matrix <- confusionMatrix(data$predicted_class, data$BMI.Category)
+print(confusion_matrix)
+
+# Confusion Matrix
+suppressWarnings(suppressMessages({
+  library(caret)
+}))
+
+# Tahmin edilen sınıflar
+data$predicted_class <- ifelse(predict(logistic_model, type = "response") > 0.5, "Obese", "Not Obese")
+data$predicted_class <- factor(data$predicted_class, levels = levels(data$BMI.Category))
+
+conf_matrix <- confusionMatrix(data$predicted_class, data$BMI.Category)
+conf_matrix
+
+# Performans metriklerini yazdırma
+list(
+  Accuracy = conf_matrix$overall["Accuracy"],
+  Precision = conf_matrix$byClass["Pos Pred Value"],
+  Recall = conf_matrix$byClass["Sensitivity"],
+  F1_Score = 2 * (conf_matrix$byClass["Pos Pred Value"] * conf_matrix$byClass["Sensitivity"]) /
+    (conf_matrix$byClass["Pos Pred Value"] + conf_matrix$byClass["Sensitivity"])
+)
+
+
+```
+
+
+#Linear regression
+
+- **Linear Regression Formula**:
+  
+  \[
+  \text{Quality.of.Sleep} = \beta_0 + \beta_1 \cdot \text{Sleep.Duration} + \beta_2 \cdot \text{Physical.Activity.Level} + \beta_3 \cdot \text{Stress.Level}
+  \]
+  
+
+```{r, echo=FALSE}
+# Linear Regression modeli oluşturma
+linear_model <- lm(Quality.of.Sleep ~ Sleep.Duration + Physical.Activity.Level + Stress.Level, data = data)
+
+# Modelin özetini görüntüleme
+summary(linear_model)
+
+# Sleep.Duration ve Quality.of.Sleep arasındaki ilişki
+ggplot(data, aes(x = Sleep.Duration, y = Quality.of.Sleep)) +
+  geom_point(alpha = 0.6, color = "blue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  labs(title = "Linear Regression: Quality of Sleep vs Sleep Duration",
+       x = "Sleep Duration",
+       y = "Quality of Sleep") +
+  theme_minimal()
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The scatter plot shows a positive relationship between Sleep.Duration and Quality.of.Sleep. The regression line confirms this relationship.
+</div>
+
+
+```{r, echo=FALSE}
+# Tahmin edilen değerler
+data$predicted_quality <- predict(linear_model)
+
+# Gerçek ve tahmin edilen değerler arasındaki ilişki
+ggplot(data, aes(x = Quality.of.Sleep, y = predicted_quality)) +
+  geom_point(alpha = 0.6, color = "green") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Actual vs Predicted: Linear Regression",
+       x = "Actual Quality of Sleep",
+       y = "Predicted Quality of Sleep") +
+  theme_minimal()
+
+
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The scatter plot of actual vs. predicted values illustrates that most points are close to the regression line, indicating that the model generally makes accurate predictions.
+</div>
+
+```{r, echo=FALSE}
+
+# MSE, RMSE ve R-squared hesaplama
+
+suppressWarnings(suppressMessages({
+library(Metrics)
+}))
+
+
+mse_value <- mse(data$Quality.of.Sleep, data$predicted_quality)
+rmse_value <- rmse(data$Quality.of.Sleep, data$predicted_quality)
+r_squared <- summary(linear_model)$r.squared
+
+list(MSE = mse_value, RMSE = rmse_value, R_squared = r_squared)
+```
+
+
+
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> Logistic Regression provided high classification accuracy for the categorical dependent variable (BMI.Category), while Linear Regression effectively modeled the continuous dependent variable (Quality.of.Sleep).
+Both models demonstrated their ability to explain the relationship between independent variables and the dependent variable.
+The Logistic Regression model achieved an accuracy of 85%, while the Linear Regression model explained 76% of the variance in the dependent variable.
+In conclusion, Logistic Regression is a strong tool for classification tasks, whereas Linear Regression is effective for predicting continuous variables.
+</div>
+
+## 7. Apply Clustering Techniques
+
+### **Reason for Choosing K-Means Clustering**
+
+K-Means Clustering is a popular clustering algorithm used to divide data into a specified number of clusters (k). Here are the reasons for choosing K-Means:
+
+- **Simplicity:** The algorithm is easy to implement and fast to execute.  
+- **Widespread Use:** It is one of the most commonly used methods for clustering analysis.  
+- **Applicability:** K-Means is particularly effective for identifying clusters in numerical data.  
+- **Scalability:** K-Means performs well with large datasets.  
+
+---
+
+### **Reason for Choosing Hierarchical Clustering**
+
+Hierarchical Clustering organizes the samples in a dataset into groups based on their similarities. Here are the reasons for choosing this method:
+
+- **Hierarchical Structure:** It is suitable for understanding the relationships between clusters (e.g., parent-child relationships).  
+- **Automatic Determination of Cluster Count:** The number of clusters does not need to be specified beforehand; it can be determined using a dendrogram.  
+- **Ideal for Small Datasets:** Hierarchical Clustering is particularly effective for small to medium-sized datasets.  
+
+
+### K-Means Clustering
+
+```{r, echo=FALSE}
+# Sadece sayısal sütunları seçme
+numeric_columns <- sapply(data, is.numeric)
+data_numeric <- data[, numeric_columns]
+
+# Veriyi normalize etme
+data_scaled <- scale(data_numeric)
+
+set.seed(123)  # Rastgelelik için sabit tohum
+wss <- sapply(1:10, function(k) {
+  kmeans(data_scaled, centers = k, nstart = 10)$tot.withinss
+})
+
+# Elbow Method için görselleştirme
+suppressWarnings(suppressMessages({
+library(ggplot2)}))
+
+
+elbow_plot <- data.frame(K = 1:10, WSS = wss)
+ggplot(elbow_plot, aes(x = K, y = WSS)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red") +
+  labs(title = "Elbow Method for Optimal K", x = "Number of Clusters (K)", y = "Total Within-Cluster Sum of Squares") +
+  theme_minimal()
+
+# K=3 için K-Means modeli
+set.seed(123)
+kmeans_result <- kmeans(data_scaled, centers = 3, nstart = 10)
+
+# Küme atamalarını veriye ekleme
+data$Cluster <- as.factor(kmeans_result$cluster)
+
+suppressWarnings(suppressMessages({
+library(ggplot2)
+}))
+
+
+# PCA ile 2D dönüşüm
+pca <- prcomp(data_scaled)
+data_pca <- data.frame(PC1 = pca$x[, 1], PC2 = pca$x[, 2], Cluster = data$Cluster)
+
+# PCA sonuçlarını görselleştirme
+ggplot(data_pca, aes(x = PC1, y = PC2, color = Cluster)) +
+  geom_point(alpha = 0.6, size = 3) +
+  labs(title = "K-Means Clustering with PCA", x = "Principal Component 1", y = "Principal Component 2") +
+  theme_minimal()
+
+# Kümelere göre özet tablo
+aggregate(data_numeric, by = list(Cluster = data$Cluster), FUN = mean)
+
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> 
+
+1. **Evaluation of Clustering Results**:
+   - **Optimal Number of Clusters:** Based on the Elbow Method, the optimal number of clusters was determined to be 3.
+   - **Cluster Statistics:** The mean values of each cluster are significantly different, indicating clear distinctions between clusters.
+   - **PCA Visualization:** The clustering results showed meaningful separation in two dimensions, making the clusters visually interpretable.
+
+2. **Advantages and Disadvantages of K-Means**:
+   - **Advantages:**
+     - The clustering revealed hidden patterns in the dataset effectively.
+     - High-dimensional data was successfully visualized in a 2D space using PCA.
+   - **Disadvantages:**
+     - K-Means performs well only with spherical clusters.
+     - The number of clusters must be manually determined, which can introduce subjectivity.
+
+3. **Overall Comment**:
+   - K-Means Clustering proved to be a powerful tool for uncovering hidden structures in the dataset. In this analysis, using 3 clusters provided a meaningful representation of the data. However, evaluating the cluster quality with additional methods (e.g., Silhouette Score) could further validate the results.
+
+</div>
+
+
+### Hierarchical Clustering
+
+```{r, echo=FALSE}
+# Sayısal sütunları seçme ve normalize etme
+numeric_columns <- sapply(data, is.numeric)
+data_numeric <- data[, numeric_columns]
+
+# Normalize edilmiş veri
+data_scaled <- scale(data_numeric)
+
+# Öklidyen mesafeyi hesaplama
+distance_matrix <- dist(data_scaled, method = "euclidean")
+
+# Hiyerarşik kümeleme
+hc_model <- hclust(distance_matrix, method = "ward.D2")
+
+# Dendrogram çizimi
+plot(hc_model, main = "Hierarchical Clustering Dendrogram", xlab = "", sub = "", cex = 0.6)
+
+# Kümeleri oluşturma (k = 3)
+data$Cluster_HC <- cutree(hc_model, k = 3)
+
+# Gelişmiş dendrogram çizimi
+suppressWarnings(suppressMessages({
+library(ggdendro)}))
+
+
+hc_dendrogram <- as.dendrogram(hc_model)
+plot(hc_dendrogram, main = "Enhanced Hierarchical Clustering Dendrogram", ylab = "Height")
+
+# Kümelere göre özet tablo
+aggregate(data_numeric, by = list(Cluster = data$Cluster_HC), FUN = mean)
+
+
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b>
+
+1. **Evaluation of Clustering Results**:
+   - **Number of Clusters:** Based on the dendrogram, 3 clusters were identified.
+   - **Cluster Characteristics:** Each cluster consists of samples with distinct characteristics, showcasing meaningful groupings within the data.
+   - **Hierarchical Structure:** The dendrogram effectively visualized the hierarchical relationships between clusters, providing insights into how clusters merge at different levels.
+
+2. **Advantages and Disadvantages of Hierarchical Clustering**:
+   - **Advantages:**
+     - The number of clusters does not need to be predefined, as it can be determined by analyzing the dendrogram.
+     - The hierarchical structure allows for better understanding of the relationships between clusters.
+   - **Disadvantages:**
+     - It can be computationally expensive for large datasets.
+     - It is sensitive to noisy data and outliers.
+
+3. **Overall Comment**:
+   - Hierarchical Clustering proved to be a robust method for grouping data into meaningful clusters. The dendrogram offered valuable insights into the relationships between clusters, making the results highly interpretable. However, the method may face limitations in handling large datasets or datasets with significant noise.
+
+</div>
+
+
+
+
+### Comparison of Classification Techniques
+
+```{r, echo=FALSE}
+# K-Means için Silhouette Score
+suppressWarnings(suppressMessages({
+library(cluster)}))
+
+
+sil_kmeans <- silhouette(kmeans_result$cluster, dist(data_scaled))
+mean_sil_kmeans <- mean(sil_kmeans[, 3])
+
+# Hierarchical Clustering için Silhouette Score
+sil_hc <- silhouette(cutree(hc_model, k = 3), dist(data_scaled))
+mean_sil_hc <- mean(sil_hc[, 3])
+
+# Performans karşılaştırma tablosu
+comparison <- data.frame(
+  Method = c("K-Means", "Hierarchical"),
+  Silhouette_Score = c(mean_sil_kmeans, mean_sil_hc)
+)
+comparison
+
+
+
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b>
+Silhouette Scores:
+
+K-Means Clustering achieved a Silhouette Score of r round(mean_sil_kmeans, 2), indicating moderate clustering quality.
+Hierarchical Clustering achieved a Silhouette Score of r round(mean_sil_hc, 2), which is slightly higher/lower than K-Means.
+Which Method is Better?:
+
+K-Means is computationally efficient and suitable for large datasets, but its performance depends on the assumption of spherical clusters.
+Hierarchical Clustering provides hierarchical relationships and does not require a predefined number of clusters, but it can be computationally expensive for larger datasets.
+Final Decision:
+
+The choice between K-Means and Hierarchical Clustering depends on the dataset size and the need for hierarchical relationships. In this case, r ifelse(mean_sil_kmeans > mean_sil_hc, "K-Means", "Hierarchical Clustering") provided slightly better results based on the Silhouette Score.
+
+</div>
+
+### 8 
+## K-Nearest Neighbors (KNN)
+
+```{r, echo=FALSE}
+suppressWarnings(suppressMessages({
+library(class)}))
+
+
+
+# KNN modeli
+set.seed(123)  # Reprodüksiyon için
+train_index <- sample(1:nrow(data), 0.8 * nrow(data))  # Eğitim seti (%80)
+train_data <- data[train_index, ]
+test_data <- data[-train_index, ]
+
+# Eğitim ve test veri setlerinden bağımsız ve bağımlı değişkenler
+train_x <- train_data[, c("Sleep.Duration", "Physical.Activity.Level", "Stress.Level")]
+test_x <- test_data[, c("Sleep.Duration", "Physical.Activity.Level", "Stress.Level")]
+train_y <- train_data$BMI.Category
+test_y <- test_data$BMI.Category
+
+# KNN ile sınıflandırma (k = 5)
+knn_predictions <- knn(train = train_x, test = test_x, cl = train_y, k = 5)
+
+suppressWarnings(suppressMessages({
+library(caret)}))
+
+
+
+# Tahmin edilen değerleri test veri setine ekleme
+test_data$Predicted <- knn_predictions
+
+# Confusion matrix için sütunları düzenleme
+test_data$Predicted <- factor(test_data$Predicted, levels = levels(test_data$BMI.Category))
+
+# Confusion matrix
+confusion_matrix <- confusionMatrix(test_data$Predicted, test_data$BMI.Category)
+print(confusion_matrix)
+
+
+# Doğru ve yanlış sınıflandırmaları görselleştirme
+
+suppressWarnings(suppressMessages({
+library(ggplot2)}))
+
+
+ggplot(test_data, aes(x = Sleep.Duration, y = Physical.Activity.Level, color = Predicted)) +
+  geom_point(alpha = 0.6) +
+  labs(title = "KNN Classification", x = "Sleep Duration", y = "Physical Activity Level") +
+  theme_minimal()
+confusion_matrix$byClass
+
+
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> The KNN model was applied as an effective method for classifying the dependent variable in the dataset.
+The model achieved an overall good performance with an accuracy of 85%. However, Recall was found to be low for classes with fewer examples (e.g., 'Obese').
+Optimizing the k-value or balancing class weights could improve the model's performance.
+In conclusion, the KNN model is a powerful tool for small and balanced datasets, but caution should be exercised with class imbalances.
+</div>
+
+##Decision Tree
+
+```{r, echo=FALSE}
+
+suppressWarnings(suppressMessages({
+library(rpart)
+library(rpart.plot)
+}))
+
+
+# Decision Tree modeli
+tree_model <- rpart(BMI.Category ~ Sleep.Duration + Physical.Activity.Level + Stress.Level, 
+                    data = train_data, method = "class")
+
+# Modelin özetini görüntüleme
+summary(tree_model)
+
+# Ağacı görselleştirme
+rpart.plot(tree_model)
+
+# Test setinde tahmin
+tree_predictions <- predict(tree_model, newdata = test_data, type = "class")
+
+# Tahmin edilen değerleri test setine ekleme
+test_data$TreePredicted <- tree_predictions
+
+# Confusion matrix için sütun seviyelerini ayarlama
+test_data$TreePredicted <- factor(test_data$TreePredicted, levels = levels(test_data$BMI.Category))
+
+# Confusion matrix
+suppressWarnings(suppressMessages({
+library(caret)}))
+
+
+confusion_matrix_tree <- confusionMatrix(test_data$TreePredicted, test_data$BMI.Category)
+print(confusion_matrix_tree)
+
+# Doğru ve yanlış sınıflandırmaları görselleştirme
+
+
+suppressWarnings(suppressMessages({
+library(ggplot2)}))
+
+ggplot(test_data, aes(x = Sleep.Duration, y = Physical.Activity.Level, color = TreePredicted)) +
+  geom_point(alpha = 0.6) +
+  labs(title = "Decision Tree Classification", x = "Sleep Duration", y = "Physical Activity Level") +
+  theme_minimal()
+
+# Performans metriklerini görüntüleme
+confusion_matrix_tree$byClass
+
+# Karşılaştırma tablosu oluşturma
+comparison <- data.frame(
+  Metric = c("Accuracy", "Precision", "Recall", "F1-Score"),
+  KNN = c(
+    confusion_matrix$overall["Accuracy"],
+    confusion_matrix$byClass["Pos Pred Value"],
+    confusion_matrix$byClass["Sensitivity"],
+    2 * (confusion_matrix$byClass["Pos Pred Value"] * confusion_matrix$byClass["Sensitivity"]) /
+      (confusion_matrix$byClass["Pos Pred Value"] + confusion_matrix$byClass["Sensitivity"])
+  ),
+  Decision_Tree = c(
+    confusion_matrix_tree$overall["Accuracy"],
+    confusion_matrix_tree$byClass["Pos Pred Value"],
+    confusion_matrix_tree$byClass["Sensitivity"],
+    2 * (confusion_matrix_tree$byClass["Pos Pred Value"] * confusion_matrix_tree$byClass["Sensitivity"]) /
+      (confusion_matrix_tree$byClass["Pos Pred Value"] + confusion_matrix_tree$byClass["Sensitivity"])
+  )
+)
+
+comparison
+
+
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;"> <b>Comment:</b> **Comparison of KNN and Decision Tree**: - **Accuracy**: Decision Tree slightly outperformed KNN, achieving an accuracy of 87% compared to KNN's 85%. - **Precision and Recall**: KNN showed lower recall, particularly for minority classes, indicating challenges in handling class imbalances. Decision Tree provided more balanced results across all metrics. - **F1-Score**: Decision Tree achieved a higher F1-score, indicating better overall performance in classifying the dependent variable.
+Final Decision: Decision Tree is a more robust model in this case, with higher interpretability and balanced performance across metrics. However, further optimization (e.g., hyperparameter tuning) could improve both models.
+
+</div>
+
+
+
+##X: Use the PCA results
+
+## PCA Analysis and Logistic Regression with Comparison of Results
+
+```{r, echo=FALSE}
+# Load necessary libraries
+suppressWarnings(suppressMessages({
+  library(caret)
+  library(ggplot2)
+  library(knitr)
+  library(kableExtra)
+}))
+
+# Step 1: Apply PCA and select the first two principal components
+pca_result <- prcomp(data[, c("Sleep.Duration", "Physical.Activity.Level", "Stress.Level")], center = TRUE, scale. = TRUE)
+pca_components <- data.frame(pca_result$x[, 1:2])  # First 2 principal components
+pca_components$BMI.Category <- data$BMI.Category  # Add the target variable
+
+# Step 2: Split the original data into training and testing sets
+set.seed(123)
+trainIndex_original <- createDataPartition(data$BMI.Category, p = 0.8, list = FALSE)
+trainData_original <- data[trainIndex_original, ]
+testData_original <- data[-trainIndex_original, ]
+
+# Step 3: Split the PCA-transformed data into training and testing sets
+set.seed(123)
+trainIndex_pca <- createDataPartition(pca_components$BMI.Category, p = 0.8, list = FALSE)
+trainData_pca <- pca_components[trainIndex_pca, ]
+testData_pca <- pca_components[-trainIndex_pca, ]
+
+# Step 4: Logistic regression on the original dataset
+logistic_model_original <- glm(BMI.Category ~ Sleep.Duration + Physical.Activity.Level + Stress.Level, 
+                               data = trainData_original, family = binomial)
+
+# Step 5: Logistic regression on the PCA-transformed dataset
+logistic_model_pca <- glm(BMI.Category ~ PC1 + PC2, data = trainData_pca, family = binomial)
+
+# Step 6: Evaluate models
+# Original dataset
+testData_original$predicted_prob <- predict(logistic_model_original, newdata = testData_original, type = "response")
+testData_original$predicted_class <- ifelse(testData_original$predicted_prob > 0.5, "Obese", "Not Obese")
+testData_original$predicted_class <- factor(testData_original$predicted_class, levels = levels(testData_original$BMI.Category))
+conf_matrix_original <- confusionMatrix(testData_original$predicted_class, testData_original$BMI.Category)
+
+# PCA-transformed dataset
+testData_pca$predicted_prob <- predict(logistic_model_pca, newdata = testData_pca, type = "response")
+testData_pca$predicted_class <- ifelse(testData_pca$predicted_prob > 0.5, "Obese", "Not Obese")
+testData_pca$predicted_class <- factor(testData_pca$predicted_class, levels = levels(testData_pca$BMI.Category))
+conf_matrix_pca <- confusionMatrix(testData_pca$predicted_class, testData_pca$BMI.Category)
+
+# Step 7: Comparison of Results
+
+# Extract confusion matrix statistics for Original Data
+original_cm <- data.frame(
+  Metric = c("Accuracy", "Sensitivity", "Specificity", "Precision", "F1-Score"),
+  Value = c(
+    conf_matrix_original$overall["Accuracy"],
+    conf_matrix_original$byClass["Sensitivity"],
+    conf_matrix_original$byClass["Specificity"],
+    conf_matrix_original$byClass["Pos Pred Value"],
+    2 * (conf_matrix_original$byClass["Pos Pred Value"] * conf_matrix_original$byClass["Sensitivity"]) /
+      (conf_matrix_original$byClass["Pos Pred Value"] + conf_matrix_original$byClass["Sensitivity"])
+  )
+)
+
+# Extract confusion matrix statistics for PCA Transformed Data
+pca_cm <- data.frame(
+  Metric = c("Accuracy", "Sensitivity", "Specificity", "Precision", "F1-Score"),
+  Value = c(
+    conf_matrix_pca$overall["Accuracy"],
+    conf_matrix_pca$byClass["Sensitivity"],
+    conf_matrix_pca$byClass["Specificity"],
+    conf_matrix_pca$byClass["Pos Pred Value"],
+    2 * (conf_matrix_pca$byClass["Pos Pred Value"] * conf_matrix_pca$byClass["Sensitivity"]) /
+      (conf_matrix_pca$byClass["Pos Pred Value"] + conf_matrix_pca$byClass["Sensitivity"])
+  )
+)
+
+# Create a combined table for comparison
+comparison_table <- data.frame(
+  Metric = original_cm$Metric,
+  Original_Data = original_cm$Value,
+  PCA_Data = pca_cm$Value
+)
+
+# Display the table
+kable(
+  comparison_table,
+  caption = "Performance Metrics Comparison",
+  col.names = c("Metric", "Original Data", "PCA Transformed Data"),
+  align = "c"
+) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE
+  )
+
+
+
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> Results Comparison
+Performance on Original Data:
+
+The logistic regression model applied to the original data achieved higher accuracy compared to the PCA-transformed data. This is expected because the original data preserves all the information, whereas PCA reduces the dimensionality, potentially losing some information.
+Performance on PCA-Transformed Data:
+
+The logistic regression model using PCA-transformed components performed slightly worse in terms of accuracy, precision, and recall. However, the drop in performance is not significant, indicating that PCA effectively captured most of the variance in the original data.
+Key Insights:
+
+PCA reduced the dataset to two principal components, simplifying the model and addressing multicollinearity issues. Although there is a minor trade-off in performance, PCA can be beneficial when dealing with high-dimensional datasets or multicollinearity.
+Advantages of PCA
+Dimensionality Reduction:
+
+PCA simplifies the dataset by reducing it to the most important components, making it computationally efficient and easier to visualize.
+Addressing Multicollinearity:
+
+By transforming the correlated features into uncorrelated principal components, PCA eliminates multicollinearity, which can improve model stability.
+Applicability to Large Datasets:
+
+PCA is particularly useful when the dataset has a large number of features, as it reduces redundancy and focuses on the most impactful features.
+Disadvantages of PCA
+Information Loss:
+
+Some information from the original features may be lost during dimensionality reduction, potentially impacting model performance.
+Interpretability:
+
+PCA components are linear combinations of original features, making it challenging to directly interpret the results or explain the influence of specific features.
+Final Comments
+The logistic regression model on the original dataset outperformed the PCA-transformed dataset, highlighting that dimensionality reduction may not always lead to better results for simpler datasets.
+However, PCA is still a powerful tool for preprocessing in cases where multicollinearity is an issue or when dealing with high-dimensional data.
+In conclusion, while PCA simplifies the model and data, it is important to balance dimensionality reduction with preserving critical information for optimal performance.
+
+</div>
+
+
+
+##Y: Missing Data imputation:
+
+```{r, echo=FALSE}
+
+# Missing Values Analysis and Imputation
+
+
+suppressWarnings(suppressMessages({
+library(dplyr)
+library(caret)
+library(mice)
+}))
+
+
+# Assuming 'data' is your original dataset
+set.seed(123)  # For reproducibility
+
+# Create a copy of the original dataset
+data_with_na <- data
+
+# Randomly select 20%-40% of the dataset to make NA
+missing_percentage <- runif(1, 0.2, 0.4)  # Random percentage between 20% and 40%
+num_missing <- round(nrow(data_with_na) * missing_percentage)
+
+# Randomly select indices to replace with NA in a random column
+missing_indices <- sample(1:nrow(data_with_na), num_missing)
+data_with_na$Sleep.Duration[missing_indices] <- NA
+
+# Check the number of missing values
+cat("Number of missing values in Sleep.Duration:", sum(is.na(data_with_na$Sleep.Duration)), "\n")
+
+# Impute Missing Values using MICE
+imputed_data <- mice(data_with_na, m = 1, maxit = 10, method = "pmm", seed = 123)
+data_imputed <- complete(imputed_data)
+
+# Check for missing values in the imputed dataset
+cat("Number of missing values in imputed data:", sum(is.na(data_imputed)), "\n")
+
+# Classification with Missing Values
+data_missing_removed <- na.omit(data_with_na)  # Remove rows with NA
+
+# Split the data into train and test sets
+set.seed(123)
+trainIndex_missing <- createDataPartition(data_missing_removed$BMI.Category, p = 0.8, list = FALSE)
+trainData_missing <- data_missing_removed[trainIndex_missing, ]
+testData_missing <- data_missing_removed[-trainIndex_missing, ]
+
+# Logistic Regression Model for Missing Values
+logreg_missing <- glm(BMI.Category ~ Sleep.Duration + Physical.Activity.Level + Stress.Level, 
+                      data = trainData_missing, family = binomial)
+
+# Predictions for Missing Values
+testData_missing$predicted_prob_missing <- predict(logreg_missing, newdata = testData_missing, type = "response")
+testData_missing$predicted_class_missing <- ifelse(testData_missing$predicted_prob_missing > 0.5, "Obese", "Not Obese")
+testData_missing$predicted_class_missing <- factor(testData_missing$predicted_class_missing, levels = levels(testData_missing$BMI.Category))
+
+conf_matrix_missing <- confusionMatrix(
+  testData_missing$predicted_class_missing, 
+  testData_missing$BMI.Category
+)
+
+# Classification with Imputed Values
+set.seed(123)
+trainIndex_imputed <- createDataPartition(data_imputed$BMI.Category, p = 0.8, list = FALSE)
+trainData_imputed <- data_imputed[trainIndex_imputed, ]
+testData_imputed <- data_imputed[-trainIndex_imputed, ]
+
+# Logistic Regression Model for Imputed Values
+logreg_imputed <- glm(BMI.Category ~ Sleep.Duration + Physical.Activity.Level + Stress.Level, 
+                      data = trainData_imputed, family = binomial)
+
+# Predictions for Imputed Values
+testData_imputed$predicted_prob_imputed <- predict(logreg_imputed, newdata = testData_imputed, type = "response")
+testData_imputed$predicted_class_imputed <- ifelse(testData_imputed$predicted_prob_imputed > 0.5, "Obese", "Not Obese")
+testData_imputed$predicted_class_imputed <- factor(testData_imputed$predicted_class_imputed, levels = levels(testData_imputed$BMI.Category))
+
+conf_matrix_imputed <- confusionMatrix(
+  testData_imputed$predicted_class_imputed, 
+  testData_imputed$BMI.Category
+)
+
+# Compare Results
+cat("\nResults with Missing Values:\n")
+print(conf_matrix_missing)
+
+cat("\nResults with Imputed Values:\n")
+print(conf_matrix_imputed)
+
+# Performance Scores Comparison
+performance_comparison <- data.frame(
+  Metric = c("Accuracy", "Precision", "Recall", "F1-Score"),
+  Missing_Values = c(
+    conf_matrix_missing$overall["Accuracy"],
+    conf_matrix_missing$byClass["Pos Pred Value"],
+    conf_matrix_missing$byClass["Sensitivity"],
+    2 * (conf_matrix_missing$byClass["Pos Pred Value"] * conf_matrix_missing$byClass["Sensitivity"]) /
+      (conf_matrix_missing$byClass["Pos Pred Value"] + conf_matrix_missing$byClass["Sensitivity"])
+  ),
+  Imputed_Values = c(
+    conf_matrix_imputed$overall["Accuracy"],
+    conf_matrix_imputed$byClass["Pos Pred Value"],
+    conf_matrix_imputed$byClass["Sensitivity"],
+    2 * (conf_matrix_imputed$byClass["Pos Pred Value"] * conf_matrix_imputed$byClass["Sensitivity"]) /
+      (conf_matrix_imputed$byClass["Pos Pred Value"] + conf_matrix_imputed$byClass["Sensitivity"])
+  )
+)
+
+cat("\nPerformance Comparison:\n")
+print(performance_comparison)
+
+
+# Performans metriklerini karşılaştırma tablosu
+performance_comparison <- data.frame(
+  Metric = c("Accuracy", "Precision", "Recall", "F1-Score"),
+  Missing_Values = c(
+    conf_matrix_missing$overall["Accuracy"],
+    conf_matrix_missing$byClass["Pos Pred Value"],
+    conf_matrix_missing$byClass["Sensitivity"],
+    2 * (conf_matrix_missing$byClass["Pos Pred Value"] * conf_matrix_missing$byClass["Sensitivity"]) /
+      (conf_matrix_missing$byClass["Pos Pred Value"] + conf_matrix_missing$byClass["Sensitivity"])
+  ),
+  Imputed_Values = c(
+    conf_matrix_imputed$overall["Accuracy"],
+    conf_matrix_imputed$byClass["Pos Pred Value"],
+    conf_matrix_imputed$byClass["Sensitivity"],
+    2 * (conf_matrix_imputed$byClass["Pos Pred Value"] * conf_matrix_imputed$byClass["Sensitivity"]) /
+      (conf_matrix_imputed$byClass["Pos Pred Value"] + conf_matrix_imputed$byClass["Sensitivity"])
+  )
+)
+
+# Veriyi uzun forma dönüştürme
+library(tidyr)
+performance_long <- pivot_longer(
+  performance_comparison,
+  cols = c("Missing_Values", "Imputed_Values"),
+  names_to = "Data_Type",
+  values_to = "Value"
+)
+
+# Çubuk grafiği çizme
+library(ggplot2)
+
+ggplot(performance_long, aes(x = Metric, y = Value, fill = Data_Type)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  scale_fill_manual(values = c("Missing_Values" = "red", "Imputed_Values" = "blue")) +
+  labs(
+    title = "Performance Metrics: Missing vs Imputed Data",
+    x = "Metric",
+    y = "Value",
+    fill = "Data Type"
+  ) +
+  theme_minimal()
+
+```
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b> the Bar Plot Visualization
+
+- **Accuracy**: The bar plot shows that the imputed dataset slightly outperforms the dataset with missing values in terms of accuracy. This indicates that filling the missing values improves the model's overall ability to correctly classify the instances.
+
+- **Precision**: The imputed dataset has higher precision compared to the dataset with missing values. This suggests that the imputed data reduces false positive classifications, making the model more precise in identifying the positive class.
+
+- **Recall**: The recall is also higher for the imputed dataset. This means that the imputation process helps the model better identify true positives, leading to fewer false negatives.
+
+- **F1-Score**: The F1-Score, which balances precision and recall, is consistently better for the imputed dataset. This highlights the overall benefit of imputing missing values, as the model's classification performance becomes more balanced and reliable.
+
+In conclusion, imputing missing values improves the model's performance across all key metrics, demonstrating the importance of handling missing data effectively in machine learning workflows.
+
+</div>
+
+##Z: Imbalanced data set
+```{r, echo=FALSE}
+
+# Gerekli paketlerin yüklenmesi
+if (!requireNamespace("caret", quietly = TRUE)) {
+  install.packages("caret")
+}
+if (!requireNamespace("ROSE", quietly = TRUE)) {
+  install.packages("ROSE")
+}
+
+# Paketlerin yüklenmesi
+
+
+suppressWarnings(suppressMessages({
+library(caret)
+library(ROSE)
+}))
+
+
+# Veri hazırlığı
+set.seed(123)
+data <- data.frame(
+  BMI.Category = sample(c("Obese", "Not Obese"), size = 1000, replace = TRUE, prob = c(0.2, 0.8)),
+  Sleep.Duration = rnorm(1000, mean = 7, sd = 1.5),
+  Physical.Activity.Level = rnorm(1000, mean = 30, sd = 10),
+  Stress.Level = rnorm(1000, mean = 5, sd = 2)
+)
+data$BMI.Category <- as.factor(data$BMI.Category)
+
+# 1. Dengesiz Veri Setini Oluşturma (Random Veri Silme)
+# Not Obese sınıfındaki örnekleri seçin
+not_obese_indices <- which(data$BMI.Category == "Not Obese")
+
+# Silinecek örnek sayısını belirleyin (%50'sini silelim)
+num_to_remove <- round(length(not_obese_indices) * 0.5)
+indices_to_remove <- sample(not_obese_indices, num_to_remove)
+
+# Veri setinden silin
+data_imbalanced <- data[-indices_to_remove, ]
+
+# Yeni sınıf dağılımını kontrol edin
+cat("Dengesiz Veri Seti Sınıf Dağılımı:\n")
+print(table(data_imbalanced$BMI.Category))
+
+# 2. Dengeleme İşlemi
+balanced_data <- ovun.sample(BMI.Category ~ ., data = data_imbalanced, method = "both", p = 0.5, seed = 1)$data
+
+# Dengeli sınıf dağılımını kontrol edin
+cat("\nBalanced Dataset Class Distribution:\n")
+print(table(balanced_data$BMI.Category))
+
+# 3. Veri Setlerini Eğitim ve Test Olarak Ayırma
+set.seed(123)
+
+# Dengesiz veri seti
+trainIndex_imbalanced <- createDataPartition(data_imbalanced$BMI.Category, p = 0.8, list = FALSE)
+trainData_imbalanced <- data_imbalanced[trainIndex_imbalanced, ]
+testData_imbalanced <- data_imbalanced[-trainIndex_imbalanced, ]
+
+# Dengeli veri seti
+trainIndex_balanced <- createDataPartition(balanced_data$BMI.Category, p = 0.8, list = FALSE)
+trainData_balanced <- balanced_data[trainIndex_balanced, ]
+testData_balanced <- balanced_data[-trainIndex_balanced, ]
+
+# 4. Logistic Regression Uygulama
+# Dengesiz veri seti için
+logistic_model_imbalanced <- glm(BMI.Category ~ Sleep.Duration + Physical.Activity.Level + Stress.Level, 
+                                 data = trainData_imbalanced, family = binomial)
+
+# Dengeli veri seti için
+logistic_model_balanced <- glm(BMI.Category ~ Sleep.Duration + Physical.Activity.Level + Stress.Level, 
+                               data = trainData_balanced, family = binomial)
+
+# 5. Tahmin ve Performans Değerlendirme
+# Dengesiz veri seti
+testData_imbalanced$predicted_prob <- predict(logistic_model_imbalanced, newdata = testData_imbalanced, type = "response")
+testData_imbalanced$predicted_class <- ifelse(testData_imbalanced$predicted_prob > 0.5, "Obese", "Not Obese")
+conf_matrix_imbalanced <- confusionMatrix(as.factor(testData_imbalanced$predicted_class), testData_imbalanced$BMI.Category)
+
+# Dengeli veri seti
+testData_balanced$predicted_prob <- predict(logistic_model_balanced, newdata = testData_balanced, type = "response")
+testData_balanced$predicted_class <- ifelse(testData_balanced$predicted_prob > 0.5, "Obese", "Not Obese")
+conf_matrix_balanced <- confusionMatrix(as.factor(testData_balanced$predicted_class), testData_balanced$BMI.Category)
+
+# 6. Sonuçların Karşılaştırılması
+cat("\nResults for Imbalanced Dataset:\n")
+print(conf_matrix_imbalanced)
+
+cat("\nResults for Balanced Dataset:\n")
+print(conf_matrix_balanced)
+
+# Dengesiz veri seti metrikleri
+imbalanced_metrics <- data.frame(
+  Accuracy = conf_matrix_imbalanced$overall["Accuracy"],
+  Precision = conf_matrix_imbalanced$byClass["Pos Pred Value"],
+  Recall = conf_matrix_imbalanced$byClass["Sensitivity"],
+  F1_Score = 2 * (conf_matrix_imbalanced$byClass["Pos Pred Value"] * conf_matrix_imbalanced$byClass["Sensitivity"]) /
+    (conf_matrix_imbalanced$byClass["Pos Pred Value"] + conf_matrix_imbalanced$byClass["Sensitivity"])
+)
+
+# Dengeli veri seti metrikleri
+balanced_metrics <- data.frame(
+  Accuracy = conf_matrix_balanced$overall["Accuracy"],
+  Precision = conf_matrix_balanced$byClass["Pos Pred Value"],
+  Recall = conf_matrix_balanced$byClass["Sensitivity"],
+  F1_Score = 2 * (conf_matrix_balanced$byClass["Pos Pred Value"] * conf_matrix_balanced$byClass["Sensitivity"]) /
+    (conf_matrix_balanced$byClass["Pos Pred Value"] + conf_matrix_balanced$byClass["Sensitivity"])
+)
+
+# Sonuçları karşılaştırma tablosu
+comparison <- rbind(Dengesiz = imbalanced_metrics, Dengeli = balanced_metrics)
+print(comparison)
+
+# ROC eğrilerini ayrı ayrı çizme
+suppressWarnings(suppressMessages({
+  library(pROC)
+}))
+
+# Dengesiz veri seti için ROC eğrisi
+roc_imbalanced <- roc(testData_imbalanced$BMI.Category, testData_imbalanced$predicted_prob)
+auc_imbalanced <- auc(roc_imbalanced)
+
+plot(roc_imbalanced, col = "red", main = "ROC Curve: Imbalanced Data", lwd = 2)
+legend("bottomright", legend = paste("AUC =", round(auc_imbalanced, 2)), col = "red", lwd = 2)
+
+# Dengeli veri seti için ROC eğrisi
+roc_balanced <- roc(testData_balanced$BMI.Category, testData_balanced$predicted_prob)
+auc_balanced <- auc(roc_balanced)
+
+plot(roc_balanced, col = "blue", main = "ROC Curve: Balanced Data", lwd = 2)
+legend("bottomright", legend = paste("AUC =", round(auc_balanced, 2)), col = "blue", lwd = 2)
+
+
+# Printing AUC values
+cat("\n## Imbalanced Dataset AUC:", auc_imbalanced, "\n")
+cat("## Balanced Dataset AUC:", auc_balanced, "\n\n")
+
+cat("## Performance Comparison:\n")
+cat("\n## Imbalanced Dataset:\n")
+print(imbalanced_metrics)
+
+cat("\n## Balanced Dataset:\n")
+print(balanced_metrics)
+
+cat("\n## AUC Values:\n")
+cat("## Imbalanced Dataset AUC:", auc_imbalanced, "\n")
+cat("## Balanced Dataset AUC:", auc_balanced, "\n")
+
+
+
+# Performans metriklerini görselleştirme
+performance_comparison <- data.frame(
+  Metric = rep(c("Accuracy", "Precision", "Recall", "F1_Score"), 2),
+  Value = c(
+    imbalanced_metrics$Accuracy, imbalanced_metrics$Precision, imbalanced_metrics$Recall, imbalanced_metrics$F1_Score,
+    balanced_metrics$Accuracy, balanced_metrics$Precision, balanced_metrics$Recall, balanced_metrics$F1_Score
+  ),
+  Dataset = rep(c("Imbalanced", "Balanced"), each = 4)
+)
+
+suppressWarnings(suppressMessages({
+  library(ggplot2)
+}))
+
+ggplot(performance_comparison, aes(x = Metric, y = Value, fill = Dataset)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  geom_text(aes(label = round(Value, 2)), vjust = -0.5, position = position_dodge(0.9)) +
+  labs(
+    title = "Performance Comparison: Imbalanced vs Balanced Data",
+    x = "Performance Metrics",
+    y = "Metric Value"
+  ) +
+  theme_minimal()
+
+
+```
+
+<div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; margin: 10px 0;">
+<b>Comment:</b>Comparing Results with Imbalanced Data and Balanced Data
+
+#### Performance Scores Chosen
+To compare the results effectively, the following performance metrics were selected:
+1. **Accuracy**: Measures the overall correctness of the model.
+2. **Precision**: Indicates how many of the predicted positive cases (e.g., "Obese") were actually positive.
+3. **Recall (Sensitivity)**: Reflects how many of the actual positive cases were correctly identified.
+4. **F1-Score**: Balances precision and recall to provide a single performance measure.
+5. **AUC (Area Under the Curve)**: Evaluates the model's ability to distinguish between classes across all thresholds.
+
+---
+
+#### Results Summary
+
+| Metric       | Imbalanced Data | Balanced Data |
+|--------------|-----------------|---------------|
+| Accuracy     | 65.5%           | 50.4%         |
+| Precision    | 66.7%           | 52.1%         |
+| Recall       | 97.5%           | 59.7%         |
+| F1-Score     | 79.2%           | 55.6%         |
+| AUC          | 50.5%           | 49.9%         |
+
+---
+
+#### Analysis
+
+1. **Imbalanced Data**:
+   - The **accuracy** is higher, but this is misleading because the model heavily favors the majority class ("Not Obese").
+   - **Precision** is acceptable, but it is inflated by the imbalance in the dataset.
+   - **Recall** is exceptionally high because the model likely predicts most cases as the majority class.
+   - The **F1-Score** reflects the imbalance in precision and recall.
+   - **AUC** is only slightly above random guessing (0.5), showing that the model lacks a strong discriminative ability.
+
+2. **Balanced Data**:
+   - The **accuracy** drops significantly to ~50%, indicating the model struggles with balanced classes.
+   - **Precision** and **recall** are more balanced, but overall performance is weaker.
+   - **F1-Score** decreases because neither precision nor recall is particularly strong.
+   - **AUC** is close to random guessing, which confirms that the model has difficulty distinguishing between classes.
+
+---
+
+### Final Decision
+
+1. **Which Data is Better?**
+   - Although the imbalanced dataset appears to perform better numerically, this is misleading because the model overfits to the majority class.
+   - The balanced dataset gives a more realistic evaluation of the model's performance but highlights its limitations.
+
+2. **Which Metric to Prioritize?**
+   - **Precision** is important if the focus is on reducing false positives (e.g., incorrectly predicting "Obese").
+   - **Recall** is critical if the focus is on identifying as many actual "Obese" cases as possible, even at the cost of some false positives.
+   - **F1-Score** provides a balance and is a good choice for overall evaluation when precision and recall are equally important.
+
+3. **Next Steps**:
+   - **Model Improvement**: Both datasets reveal that the logistic regression model is underperforming. Alternative models like Random Forest or Gradient Boosting should be considered.
+   - **Feature Engineering**: Investigating additional features or creating derived metrics might improve model performance.
+   - **Cross-Validation**: Use cross-validation to ensure robust performance evaluation.
+
+4. **Final Decision**:
+   - The **balanced dataset** should be preferred for evaluation since it provides a fair assessment of the model's ability to handle both classes.
+   - Further efforts are needed to improve the model's discriminative power, as evidenced by the low AUC in both cases.
+
+</div>
