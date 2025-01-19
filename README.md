@@ -59,6 +59,109 @@ The dataset was preprocessed by:
 4. **Insights:**
    - Identifying key factors affecting sleep quality.
    - Highlighting outliers and interesting observations.
+Tabii ki, veri yükleme kısmını çıkararak İngilizce olarak yeniden yazdım:
+
+---
+
+## Sleep Health and Lifestyle Dataset Analysis
+### **Project Workflow and Challenges**
+
+This project explores the Sleep Health and Lifestyle Dataset from Kaggle to understand the relationships between sleep quality, lifestyle factors, and health metrics. Below is a detailed overview of the workflow, challenges encountered, and insights gained during the analysis:
+
+---
+
+### **1. Exploratory Data Analysis (EDA)**
+- **Steps:**
+  - We analyzed numerical variables such as Sleep Duration, Stress Level, and Physical Activity by plotting their distributions.
+  - For categorical variables like Gender and Sleep Disorder, we created bar charts to visualize the data distribution.
+  - We examined correlations between variables using a correlation matrix. Notably, we observed a significant relationship between Sleep Duration and Physical Activity.
+
+- **Challenges:**
+  - Working with synthetic data posed challenges as it was more regular and structured than real-world data. This made the correlations appear stronger than they might be with real data.
+  - Expected relationships between certain variables, such as Stress Level and Sleep Quality, were weaker than anticipated due to the nature of the dataset.
+
+---
+
+### **2. PCA (Principal Component Analysis)**
+- **What is PCA?**
+  PCA is a technique used to reduce the dimensionality of data by transforming multiple correlated variables into a smaller set of uncorrelated components (principal components).
+  
+- **Steps:**
+  - We applied PCA to the variables Sleep Duration, Physical Activity, and Stress Level.
+  - The first two principal components (PC1 and PC2) were selected, as they captured most of the variance in the data.
+  - These components simplified the data, making it easier to visualize and analyze.
+
+- **Challenges:**
+  - Interpreting PC1 and PC2 was non-trivial, as the components are abstract and represent combinations of the original variables.
+  - PCA performed well with the synthetic data, but the results might be less clear when applied to messy real-world datasets.
+
+---
+
+### **3. Splitting the Data**
+- **Why split the data?**
+  Splitting the data into training and testing sets allows us to train models on one portion of the data and evaluate their performance on unseen data. This ensures the results are generalizable.
+
+- **Steps:**
+  - We split both the original dataset and the PCA-transformed dataset into 80% training and 20% testing subsets.
+  - This allowed us to compare the performance of models built on the original data versus PCA-transformed data.
+
+---
+
+### **4. Logistic Regression Models**
+- **Steps:**
+  - A logistic regression model was created using the original dataset to predict BMI Category based on Sleep Duration, Physical Activity Level, and Stress Level.
+  - A second logistic regression model was built using the PCA-transformed data, utilizing PC1 and PC2 as predictors.
+
+- **Challenges:**
+  - The logistic regression model with the PCA-transformed data was simpler but less interpretable, as PC1 and PC2 do not have direct real-world meanings.
+  - Comparing the models' performances required careful metric calculations and visualizations.
+
+---
+
+### **5. Confusion Matrices**
+- **What is a Confusion Matrix?**
+  - A confusion matrix is a table that shows the number of correct and incorrect predictions made by a model.
+  - It includes metrics such as True Positives, False Positives, True Negatives, and False Negatives.
+
+- **Steps:**
+  - We generated confusion matrices for both the original and PCA-transformed datasets to evaluate model performance.
+  - These matrices helped us understand where each model excelled or struggled.
+
+---
+
+### **6. Performance Metrics**
+- **Metrics Used:**
+  - **Accuracy:** The proportion of correct predictions.
+  - **Precision:** The proportion of predicted positives that are actual positives.
+  - **Recall (Sensitivity):** The proportion of actual positives that are correctly predicted.
+  - **F1-Score:** A harmonic mean of Precision and Recall.
+
+- **Comparison:**
+  - The original dataset generally achieved higher accuracy, but the PCA-transformed data model was faster and still delivered reasonable performance.
+  - The performance difference between the two models highlighted the trade-off between simplicity and interpretability.
+
+---
+
+### **7. Insights and Observations**
+- **Key Findings:**
+  - Physical Activity Level and Stress Level were the most significant factors influencing Sleep Quality.
+  - There was no direct relationship between BMI Category and Sleep Duration, but shorter sleep durations were associated with poorer Sleep Quality.
+  - PCA simplified the dataset effectively and allowed us to visualize complex relationships.
+
+- **Challenges with Synthetic Data:**
+  - Synthetic data's structured nature sometimes exaggerated relationships, which may not hold in real-world datasets.
+  - Despite these challenges, the analysis provided valuable insights into the dataset.
+
+- **How Successful Was R for Sleep Health Analysis?**
+  - R proved to be an excellent tool for data manipulation, visualization, and modeling.
+  - Tools like **ggplot2** and **dplyr** streamlined the workflow, making it easier to generate insights and communicate results.
+  - Overall, the analysis met its objectives, offering clear findings about the relationships in the dataset.
+
+---
+
+### **Conclusion**
+This project demonstrated how PCA and logistic regression could be used to analyze the relationships between sleep health and lifestyle factors. While synthetic data posed unique challenges, R's capabilities allowed us to overcome these and achieve meaningful results.
+
 
 ## How to Run the Analysis
 1. Clone the repository:
