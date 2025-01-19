@@ -59,11 +59,7 @@ The dataset was preprocessed by:
 4. **Insights:**
    - Identifying key factors affecting sleep quality.
    - Highlighting outliers and interesting observations.
-Tabii ki, veri yükleme kısmını çıkararak İngilizce olarak yeniden yazdım:
 
----
-
-## Sleep Health and Lifestyle Dataset Analysis
 ### **Project Workflow and Challenges**
 
 This project explores the Sleep Health and Lifestyle Dataset from Kaggle to understand the relationships between sleep quality, lifestyle factors, and health metrics. Below is a detailed overview of the workflow, challenges encountered, and insights gained during the analysis:
